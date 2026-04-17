@@ -1,0 +1,79 @@
+// Prisma schema for the lecture system (inclass)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: SQLite does not support enums; we store these as strings and
+// constrain values in application code (see src/lib/constants.ts).
+// Role values:        "STUDENT" | "ADMIN"
+// LectureType values: "TIP" | "CONCEPT" | "PATTERN"
+
+model User {
+  id           String      @id @default(cuid())
+  username     String      @unique
+  passwordHash String
+  name         String
+  role         String      @default("STUDENT")
+  createdAt    DateTime    @default(now())
+  watchLogs    WatchLog[]
+}
+
+model Workbook {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  problems    Problem[]
+}
+
+model Problem {
+  id         String    @id @default(cuid())
+  workbookId String
+  number     Int
+  title      String
+  workbook   Workbook  @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  lectures   Lecture[]
+
+  @@unique([workbookId, number])
+  @@index([workbookId])
+}
+
+model Lecture {
+  id         String      @id @default(cuid())
+  problemId  String
+  type       String      // TIP | CONCEPT | PATTERN
+  title      String
+  filePath   String
+  mimeType   String      @default("video/mp4")
+  sizeBytes  Int         @default(0)
+  duration   Int         @default(0)
+  createdAt  DateTime    @default(now())
+  problem    Problem     @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  watchLogs  WatchLog[]
+
+  @@unique([problemId, type])
+  @@index([problemId])
+}
+
+model WatchLog {
+  id              String   @id @default(cuid())
+  userId          String
+  lectureId       String
+  watchedSeconds  Int      @default(0)
+  lastPosition    Int      @default(0)
+  completed       Boolean  @default(false)
+  firstWatchedAt  DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecture         Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lectureId])
+  @@index([userId])
+  @@index([lectureId])
+}
