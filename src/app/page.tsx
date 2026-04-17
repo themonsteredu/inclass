@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await auth();
   if (session) redirect("/workbooks");
+
+  const adminCount = await db.user.count({ where: { role: "ADMIN" } }).catch(() => 1);
+  if (adminCount === 0) redirect("/bootstrap");
 
   return (
     <div className="mx-auto max-w-xl py-16 text-center">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessWorkbook } from "@/lib/enrollments";
 import { formatSeconds, LECTURE_TYPE_LABEL } from "@/lib/format";
 
 const TYPE_ORDER: readonly string[] = ["TIP", "CONCEPT", "PATTERN"];
@@ -16,6 +17,9 @@ export default async function ProblemPage({ params }: { params: { id: string } }
     include: { workbook: true, lectures: true },
   });
   if (!problem) notFound();
+  if (!(await canAccessWorkbook(session.user.id, session.user.role, problem.workbookId))) {
+    redirect("/workbooks");
+  }
 
   const logs = await db.watchLog.findMany({
     where: {

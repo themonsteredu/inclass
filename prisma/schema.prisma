@@ -4,32 +4,47 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// NOTE: SQLite does not support enums; we store these as strings and
-// constrain values in application code (see src/lib/constants.ts).
 // Role values:        "STUDENT" | "ADMIN"
 // LectureType values: "TIP" | "CONCEPT" | "PATTERN"
 
 model User {
-  id           String      @id @default(cuid())
-  username     String      @unique
+  id           String       @id @default(cuid())
+  username     String       @unique
   passwordHash String
   name         String
-  role         String      @default("STUDENT")
-  createdAt    DateTime    @default(now())
+  role         String       @default("STUDENT")
+  createdAt    DateTime     @default(now())
   watchLogs    WatchLog[]
+  enrollments  Enrollment[]
 }
 
 model Workbook {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
-  order       Int       @default(0)
-  createdAt   DateTime  @default(now())
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
   problems    Problem[]
+  enrollments Enrollment[]
+}
+
+// 학생이 볼 수 있는 문제집을 제어합니다.
+// (userId, workbookId) 쌍이 존재하면 학생은 해당 문제집과 하위 문제/강의 접근 가능.
+model Enrollment {
+  id         String   @id @default(cuid())
+  userId     String
+  workbookId String
+  grantedAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workbook   Workbook @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workbookId])
+  @@index([userId])
+  @@index([workbookId])
 }
 
 model Problem {
@@ -49,7 +64,7 @@ model Lecture {
   problemId  String
   type       String      // TIP | CONCEPT | PATTERN
   title      String
-  filePath   String
+  filePath   String      // Vercel Blob URL (절대 URL)
   mimeType   String      @default("video/mp4")
   sizeBytes  Int         @default(0)
   duration   Int         @default(0)

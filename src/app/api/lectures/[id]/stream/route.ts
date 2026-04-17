@@ -1,70 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createReadStream, statSync } from "node:fs";
-import { Readable } from "node:stream";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { resolveUploadPath } from "@/lib/paths";
+import { canAccessLecture } from "@/lib/enrollments";
 
 export const runtime = "nodejs";
 
+// Redirects the client to the Vercel Blob URL after verifying the user
+// is enrolled in the parent workbook (or is an admin). The Blob URL itself
+// is public-but-unguessable; login-gating on the app is the primary
+// protection. For stricter control, swap Blob for a signed-URL provider.
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: { id: string } },
 ) {
   const session = await auth();
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
+  if (!(await canAccessLecture(session.user.id, session.user.role, params.id))) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const lecture = await db.lecture.findUnique({ where: { id: params.id } });
   if (!lecture) return new NextResponse("Not Found", { status: 404 });
+  if (!lecture.filePath) return new NextResponse("File missing", { status: 404 });
 
-  const filePath = resolveUploadPath(lecture.filePath);
-  let stat;
-  try {
-    stat = statSync(filePath);
-  } catch {
-    return new NextResponse("File missing", { status: 404 });
-  }
-
-  const size = stat.size;
-  const range = req.headers.get("range");
-
-  const baseHeaders: Record<string, string> = {
-    "Content-Type": lecture.mimeType || "video/mp4",
-    "Accept-Ranges": "bytes",
-    "Cache-Control": "private, max-age=0, no-cache",
-  };
-
-  if (!range) {
-    const stream = createReadStream(filePath);
-    return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
-      status: 200,
-      headers: { ...baseHeaders, "Content-Length": String(size) },
-    });
-  }
-
-  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
-  if (!match) {
-    return new NextResponse("Invalid Range", {
-      status: 416,
-      headers: { "Content-Range": `bytes */${size}` },
-    });
-  }
-  const start = match[1] ? parseInt(match[1], 10) : 0;
-  const end = match[2] ? parseInt(match[2], 10) : size - 1;
-  if (start >= size || end >= size || start > end) {
-    return new NextResponse("Range Not Satisfiable", {
-      status: 416,
-      headers: { "Content-Range": `bytes */${size}` },
-    });
-  }
-
-  const stream = createReadStream(filePath, { start, end });
-  return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
-    status: 206,
-    headers: {
-      ...baseHeaders,
-      "Content-Range": `bytes ${start}-${end}/${size}`,
-      "Content-Length": String(end - start + 1),
-    },
-  });
+  return NextResponse.redirect(lecture.filePath, 302);
 }

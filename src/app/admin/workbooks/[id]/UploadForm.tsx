@@ -1,5 +1,6 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -14,6 +15,7 @@ export function UploadForm({ problemId, type, existingTitle }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(existingTitle ?? "");
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
@@ -25,24 +27,47 @@ export function UploadForm({ problemId, type, existingTitle }: Props) {
     }
     setUploading(true);
     setError(null);
+    setProgress(0);
 
-    const duration = await readVideoDuration(file).catch(() => 0);
+    try {
+      const duration = await readVideoDuration(file).catch(() => 0);
 
-    const form = new FormData();
-    form.set("problemId", problemId);
-    form.set("type", type);
-    form.set("title", title.trim());
-    form.set("duration", String(Math.floor(duration)));
-    form.set("file", file);
+      const blob = await upload(
+        `lectures/${problemId}/${type}-${Date.now()}-${sanitize(file.name)}`,
+        file,
+        {
+          access: "public",
+          handleUploadUrl: "/api/admin/blob-upload",
+          contentType: file.type || "video/mp4",
+          onUploadProgress: (p) => setProgress(Math.round(p.percentage)),
+        },
+      );
 
-    const res = await fetch("/api/admin/upload", { method: "POST", body: form });
-    setUploading(false);
-    if (!res.ok) {
-      setError("업로드 실패");
-      return;
+      const res = await fetch("/api/admin/lectures", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          problemId,
+          type,
+          title: title.trim(),
+          url: blob.url,
+          mimeType: file.type || "video/mp4",
+          sizeBytes: file.size,
+          duration: Math.floor(duration),
+        }),
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "강의 등록 실패");
+      }
+
+      if (fileRef.current) fileRef.current.value = "";
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setUploading(false);
     }
-    if (fileRef.current) fileRef.current.value = "";
-    router.refresh();
   }
 
   return (
@@ -53,21 +78,32 @@ export function UploadForm({ problemId, type, existingTitle }: Props) {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="강의 제목"
       />
-      <input
-        ref={fileRef}
-        type="file"
-        accept="video/*"
-        className="w-full text-xs"
-      />
+      <input ref={fileRef} type="file" accept="video/*" className="w-full text-xs" />
+      {uploading && (
+        <div className="h-1 w-full overflow-hidden rounded bg-slate-200">
+          <div
+            className="h-full bg-slate-900 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
       {error && <p className="text-xs text-red-600">{error}</p>}
       <button
         disabled={uploading}
         className="w-full rounded bg-slate-900 px-2 py-1 text-xs text-white hover:bg-slate-700 disabled:opacity-50"
       >
-        {uploading ? "업로드 중..." : existingTitle ? "교체 업로드" : "업로드"}
+        {uploading
+          ? `업로드 중 ${progress}%`
+          : existingTitle
+            ? "교체 업로드"
+            : "업로드"}
       </button>
     </form>
   );
+}
+
+function sanitize(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
 }
 
 function readVideoDuration(file: File): Promise<number> {

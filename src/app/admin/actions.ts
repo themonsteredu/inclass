@@ -102,3 +102,38 @@ export async function deleteUser(formData: FormData) {
   await db.user.delete({ where: { id } });
   revalidatePath("/admin/users");
 }
+
+// Set the complete list of workbooks a student can access.
+// `workbookIds` form field(s) represent the checked boxes.
+export async function setEnrollments(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+  const checked = formData.getAll("workbookIds").map(String).filter(Boolean);
+
+  const current = await db.enrollment.findMany({
+    where: { userId },
+    select: { workbookId: true },
+  });
+  const currentSet = new Set(current.map((c) => c.workbookId));
+  const nextSet = new Set(checked);
+
+  const toAdd = checked.filter((id) => !currentSet.has(id));
+  const toRemove = [...currentSet].filter((id) => !nextSet.has(id));
+
+  await db.$transaction([
+    ...(toRemove.length
+      ? [
+          db.enrollment.deleteMany({
+            where: { userId, workbookId: { in: toRemove } },
+          }),
+        ]
+      : []),
+    ...toAdd.map((workbookId) =>
+      db.enrollment.create({ data: { userId, workbookId } }),
+    ),
+  ]);
+
+  revalidatePath("/admin/enrollments");
+  revalidatePath(`/admin/enrollments/${userId}`);
+}

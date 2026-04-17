@@ -42,6 +42,11 @@ export default async function AdminDashboard() {
           desc="학생을 등록하고 비밀번호를 발급합니다."
         />
         <Card
+          href="/admin/enrollments"
+          title="강의 접근 권한"
+          desc="학생별로 볼 수 있는 문제집을 지정합니다."
+        />
+        <Card
           href="/admin/analytics"
           title="수강 현황 조회"
           desc="학생별/강의별 시청 시간 및 완료 여부를 확인합니다."

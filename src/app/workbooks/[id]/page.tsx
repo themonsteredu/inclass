@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessWorkbook } from "@/lib/enrollments";
 
 export default async function WorkbookDetailPage({
   params,
@@ -10,6 +11,9 @@ export default async function WorkbookDetailPage({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
+  if (!(await canAccessWorkbook(session.user.id, session.user.role, params.id))) {
+    redirect("/workbooks");
+  }
 
   const workbook = await db.workbook.findUnique({
     where: { id: params.id },

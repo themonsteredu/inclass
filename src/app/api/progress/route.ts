@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessLecture } from "@/lib/enrollments";
 
 const Body = z.object({
   lectureId: z.string().min(1),
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
   if (!lecture) return new NextResponse("Not Found", { status: 404 });
 
   const userId = session.user.id;
+  if (!(await canAccessLecture(userId, session.user.role, lectureId))) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
   const existing = await db.watchLog.findUnique({
     where: { userId_lectureId: { userId, lectureId } },
   });

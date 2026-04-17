@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessWorkbook } from "@/lib/enrollments";
 import { LecturePlayer } from "@/components/LecturePlayer";
 import { formatSeconds, LECTURE_TYPE_LABEL } from "@/lib/format";
 
@@ -14,6 +15,15 @@ export default async function LecturePage({ params }: { params: { id: string } }
     include: { problem: { include: { workbook: true } } },
   });
   if (!lecture) notFound();
+  if (
+    !(await canAccessWorkbook(
+      session.user.id,
+      session.user.role,
+      lecture.problem.workbookId,
+    ))
+  ) {
+    redirect("/workbooks");
+  }
 
   const log = await db.watchLog.findUnique({
     where: {
