@@ -1,0 +1,17 @@
+# 디렉토리 목록 차단
+Options -Indexes
+
+# PHP include 폴더 웹 접근 차단 (이중 방어)
+<FilesMatch "\.(sqlite|db)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # lib/ 폴더는 절대 직접 접근 불가
+    RewriteRule ^lib/ - [F,L]
+</IfModule>
+
+# 업로드 허용 용량 힌트 (시놀로지 Web Station 에서 php.ini 수정 권장)
+# upload_max_filesize = 2048M
+# post_max_size = 2048M

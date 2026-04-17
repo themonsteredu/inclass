@@ -1,11 +1,11 @@
 node_modules
-.next
-dist
-out
-.env
-.env.local
-*.log
 .DS_Store
-next-env.d.ts
-.turbo
+*.log
 .vercel
+.idea
+.vscode
+# 시놀로지 배포 시 생기는 로컬 산출물
+daittda-lecture/data/*.db
+daittda-lecture/data/*.db-journal
+daittda-lecture/videos/*
+!daittda-lecture/videos/.gitkeep
