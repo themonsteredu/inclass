@@ -1,3 +1,0 @@
-# 이 폴더는 웹에서 직접 접근 불가해야 합니다 (DB 파일 보호)
-Require all denied
-Deny from all
