@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { previewUrl } from "@/lib/drive";
+import { signEmbedUrl } from "@/lib/bunny";
 import LecturePlayer from "./LecturePlayer";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +12,12 @@ export default async function LecturePage({ params }: { params: { id: string } }
   const supa = db();
   const { data: lec } = await supa
     .from("lectures")
-    .select("id,kind,title,duration_sec,drive_file_id,problem_id")
+    .select("id,kind,title,duration_sec,bunny_video_id,problem_id")
     .eq("id", params.id)
     .single();
   if (!lec) return <div>없는 강의</div>;
 
-  // Log click event for tip-dependency analytics — once per page visit.
+  // Click event for tip-dependency analytics — once per page visit.
   await supa.from("problem_events").insert({
     user_id: u.id,
     problem_id: lec.problem_id,
@@ -31,7 +31,6 @@ export default async function LecturePage({ params }: { params: { id: string } }
     .eq("lecture_id", lec.id)
     .maybeSingle();
 
-  // Increment view count on each open.
   await supa
     .from("lecture_views")
     .upsert(
@@ -46,7 +45,7 @@ export default async function LecturePage({ params }: { params: { id: string } }
       { onConflict: "user_id,lecture_id" }
     );
 
-  const url = previewUrl(lec.drive_file_id);
+  const url = signEmbedUrl(lec.bunny_video_id, 4 * 60 * 60);
 
   return (
     <div className="space-y-3">
@@ -56,7 +55,7 @@ export default async function LecturePage({ params }: { params: { id: string } }
       <h1 className="text-2xl font-semibold">{lec.title || `${KIND_LABEL[lec.kind]}강의`}</h1>
       <LecturePlayer src={url} lectureId={lec.id} durationSec={lec.duration_sec} />
       <p className="text-xs text-gray-500">
-        영상이 끝까지 재생되면 자동으로 시청완료로 기록됩니다.
+        영상 끝까지 재생되면 자동으로 시청완료로 기록됩니다. 이 영상 링크는 4시간 후 자동 만료됩니다.
       </p>
     </div>
   );

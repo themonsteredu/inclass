@@ -1,4 +1,4 @@
--- learning-platform initial schema
+-- learning-platform initial schema (Bunny.net Stream version)
 -- Run in Supabase SQL editor (one-shot). All access goes through service role
 -- from the Next.js server, so no RLS policies are needed.
 
@@ -36,13 +36,13 @@ create table if not exists problems (
 create index if not exists idx_problems_workbook on problems(workbook_id, number);
 
 create table if not exists lectures (
-  id            uuid primary key default gen_random_uuid(),
-  problem_id    uuid not null references problems(id) on delete cascade,
-  kind          text not null check (kind in ('tip','concept','type')),
-  title         text,
-  drive_file_id text not null,
-  duration_sec  int  not null default 0,
-  created_at    timestamptz not null default now(),
+  id              uuid primary key default gen_random_uuid(),
+  problem_id      uuid not null references problems(id) on delete cascade,
+  kind            text not null check (kind in ('tip','concept','type')),
+  title           text,
+  bunny_video_id  text not null,                       -- Bunny.net Stream video GUID
+  duration_sec    int  not null default 0,
+  created_at      timestamptz not null default now(),
   unique (problem_id, kind)
 );
 create index if not exists idx_lectures_problem on lectures(problem_id);
@@ -69,7 +69,7 @@ create table if not exists roadmap_items (
 );
 create index if not exists idx_roadmap_items_roadmap on roadmap_items(roadmap_id, position);
 
--- ============ STUDY PLANS (per workbook, with auto/manual distribution) ============
+-- ============ STUDY PLANS ============
 create table if not exists study_plans (
   id              uuid primary key default gen_random_uuid(),
   user_id         uuid not null references users(id) on delete cascade,
@@ -123,15 +123,4 @@ create table if not exists problem_completions (
   problem_id  uuid not null references problems(id) on delete cascade,
   done_at     timestamptz not null default now(),
   primary key (user_id, problem_id)
-);
-
--- ============ DRIVE OAUTH (single shared admin token) ============
-create table if not exists drive_tokens (
-  id            int primary key default 1,
-  access_token  text,
-  refresh_token text,
-  expiry_date   timestamptz,
-  scope         text,
-  updated_at    timestamptz not null default now(),
-  check (id = 1)
 );

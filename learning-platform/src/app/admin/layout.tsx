@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link className="block px-2 py-1.5 rounded hover:bg-gray-100" href="/admin/roadmaps">2년 로드맵</Link>
           <Link className="block px-2 py-1.5 rounded hover:bg-gray-100" href="/admin/plans">학습 플랜</Link>
           <Link className="block px-2 py-1.5 rounded hover:bg-gray-100" href="/admin/analytics">분석</Link>
-          <Link className="block px-2 py-1.5 rounded hover:bg-gray-100" href="/admin/drive">Drive 연동</Link>
+          <Link className="block px-2 py-1.5 rounded hover:bg-gray-100" href="/admin/bunny">Bunny.net 상태</Link>
         </nav>
         <div className="mt-auto pt-4 text-xs text-gray-500">
           <div>{u.name} (관리자)</div>
