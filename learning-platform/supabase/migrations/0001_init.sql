@@ -1,4 +1,4 @@
--- learning-platform initial schema (Bunny.net Stream version)
+-- learning-platform initial schema (Vimeo version)
 -- Run in Supabase SQL editor (one-shot). All access goes through service role
 -- from the Next.js server, so no RLS policies are needed.
 
@@ -40,7 +40,7 @@ create table if not exists lectures (
   problem_id      uuid not null references problems(id) on delete cascade,
   kind            text not null check (kind in ('tip','concept','type')),
   title           text,
-  bunny_video_id  text not null,                       -- Bunny.net Stream video GUID
+  vimeo_video_id  text not null,                       -- Vimeo video ID (numeric string, e.g. "123456789")
   duration_sec    int  not null default 0,
   created_at      timestamptz not null default now(),
   unique (problem_id, kind)

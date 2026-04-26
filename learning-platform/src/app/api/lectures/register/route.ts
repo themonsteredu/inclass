@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { fetchVideoInfo } from "@/lib/bunny";
+import { fetchVideoInfo, parseVimeoId } from "@/lib/vimeo";
 
-/** Register or replace a lecture by Bunny video GUID.
+/** Register or replace a lecture by Vimeo video id (or full vimeo.com URL).
  *  Body: { problem_id, kind, video_id, title? } */
 export async function POST(req: Request) {
   await requireAdmin();
@@ -15,20 +15,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "잘못된 입력" }, { status: 400 });
   }
 
-  // Verify the GUID actually exists in this Bunny library; pull the duration.
+  const cleanId = parseVimeoId(String(video_id));
+  if (!cleanId) {
+    return NextResponse.json(
+      { error: "Vimeo 영상 ID 또는 URL 형식이 잘못됐습니다." },
+      { status: 400 }
+    );
+  }
+
+  // Verify the video exists on Vimeo and pull the duration.
   let duration_sec = 0;
   try {
-    const info = await fetchVideoInfo(String(video_id));
+    const info = await fetchVideoInfo(cleanId);
     if (!info) {
       return NextResponse.json(
-        { error: "이 GUID는 Bunny 라이브러리에 없습니다. 라이브러리/GUID를 확인하세요." },
+        { error: "이 ID의 영상을 Vimeo 계정에서 찾을 수 없습니다. ID와 업로드 상태를 확인하세요." },
         { status: 400 }
       );
     }
-    duration_sec = Math.floor(info.length || 0);
+    duration_sec = Math.floor(info.duration || 0);
   } catch (e: any) {
     return NextResponse.json(
-      { error: "Bunny 조회 실패: " + (e?.message ?? "알 수 없음") },
+      { error: "Vimeo 조회 실패: " + (e?.message ?? "알 수 없음") },
       { status: 500 }
     );
   }
@@ -36,10 +44,10 @@ export async function POST(req: Request) {
   const { data, error } = await db()
     .from("lectures")
     .upsert(
-      { problem_id, kind, title, bunny_video_id: String(video_id), duration_sec },
+      { problem_id, kind, title, vimeo_video_id: cleanId, duration_sec },
       { onConflict: "problem_id,kind" }
     )
-    .select("id,bunny_video_id,duration_sec")
+    .select("id,vimeo_video_id,duration_sec")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);

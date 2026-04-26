@@ -23,7 +23,7 @@ export default async function WorkbookEditPage({ params }: { params: { id: strin
 
   const ids = (problems ?? []).map((p) => p.id);
   const { data: lectures } = ids.length
-    ? await supa.from("lectures").select("id,problem_id,kind,title,bunny_video_id,duration_sec").in("problem_id", ids)
+    ? await supa.from("lectures").select("id,problem_id,kind,title,vimeo_video_id,duration_sec").in("problem_id", ids)
     : { data: [] as any[] };
   const byProblem = new Map<string, any[]>();
   for (const l of lectures ?? []) {
@@ -76,7 +76,7 @@ export default async function WorkbookEditPage({ params }: { params: { id: strin
                       <div className="text-sm font-semibold mb-1">{KIND_LABEL[k]}강의</div>
                       {l ? (
                         <div className="text-xs text-gray-500 break-all">
-                          GUID: {l.bunny_video_id}<br />
+                          Vimeo ID: {l.vimeo_video_id}<br />
                           길이: {Math.floor(l.duration_sec / 60)}분
                         </div>
                       ) : (
@@ -85,7 +85,7 @@ export default async function WorkbookEditPage({ params }: { params: { id: strin
                       <LectureUploader
                         problemId={p.id}
                         kind={k}
-                        initialGuid={l?.bunny_video_id ?? null}
+                        initialVideoId={l?.vimeo_video_id ?? null}
                       />
                     </div>
                   );

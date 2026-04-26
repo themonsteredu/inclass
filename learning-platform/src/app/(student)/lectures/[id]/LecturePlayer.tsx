@@ -16,8 +16,7 @@ export default function LecturePlayer({
 
   useEffect(() => {
     // Periodically estimate watch time as elapsed wall time minus pauses.
-    // Drive's iframe doesn't expose detailed events, so we send heartbeats
-    // every 10s based on the page being visible.
+    // We send heartbeats every 10s while the page is visible.
     let visibleMs = 0;
     let lastTick = Date.now();
     let visible = !document.hidden;
@@ -75,7 +74,7 @@ export default function LecturePlayer({
     <div className="aspect-video w-full bg-black rounded-md overflow-hidden">
       <iframe
         src={src}
-        allow="autoplay; encrypted-media"
+        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
         allowFullScreen
         className="w-full h-full border-0"
       />
